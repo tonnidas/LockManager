@@ -1,0 +1,19 @@
+0
+Start 0
+Start 1
+Start 2
+Read 0 0
+Read 0 1
+Write 0 1
+Write 1 1
+Commit 1
+Rollback 1
+Write 0 1
+Write 0 0
+Read 0 0
+Write 0 0
+xyz
+Read 5 2
+Write 0 2
+Write 5 0
+EOF
