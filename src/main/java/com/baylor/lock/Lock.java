@@ -37,11 +37,12 @@ public class Lock {
     public boolean requestReadLock(int tID) {
         if (lockStatus == LockStatus.NONE || lockStatus == LockStatus.READ) {
             // granted, no lock or read lock
-            lockStatus = LockStatus.READ;
-            lockHolds.add(tID);
+            grantLock(tID, LockStatus.READ);
             return true;
         } else if (lockHolds.contains(tID)) {
+            // granted, write lock was hold by the same transaction
             // lockStatus should remain WRITE
+            grantLock(tID, LockStatus.WRITE);
             return true;
         } else { // waiting
             addWaiting(tID, true);
@@ -52,21 +53,26 @@ public class Lock {
     public boolean requestWriteLock(int tID) {
         if (lockStatus == LockStatus.NONE) {
             // granted, no lock
-            lockStatus = LockStatus.WRITE;
-            lockHolds.add(tID);
+            grantLock(tID, LockStatus.WRITE);
             return true;
         } else if (lockStatus == LockStatus.READ && lockHolds.size() == 1 && lockHolds.contains(tID)) {
             // granted, read lock was hold by the same transaction, upgrade lock
-            lockStatus = LockStatus.WRITE;
+            grantLock(tID, LockStatus.WRITE);
             return true;
         } else if (lockStatus == LockStatus.WRITE && lockHolds.contains(tID)) {
             // granted, write lock was hold by the same transaction
-            // lockStatus should remain WRITE
+            grantLock(tID, LockStatus.WRITE);
             return true;
         } else { // waiting
             addWaiting(tID, false);
             return false;
         }
+    }
+
+    public void grantLock(int tID, LockStatus type) {
+        waitingLocks.removeIf(w -> w.tID == tID); // remove from waitingLocks
+        lockStatus = type;
+        lockHolds.add(tID);
     }
 
     public void unlock(int tID) {
