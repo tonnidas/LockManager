@@ -9,14 +9,12 @@ public class Query {
         NEW, PENDING, BLOCKED, DONE, ROLLBACK, SKIPPED
     }
 
-    int lineNumber;
     String line;
     int dID, tID;
     Command command;
     Status status;
 
-    public Query(int lineNumber, String line, Command command, int dID, int tID) {
-        this.lineNumber = lineNumber;
+    public Query(String line, Command command, int dID, int tID) {
         this.line = line;
         this.command = command;
         this.dID = dID;
@@ -24,12 +22,8 @@ public class Query {
         this.status = Status.NEW;
     }
 
-    public Query(int lineNumber, String line, Command command, int tID) {
-        this(lineNumber, line, command, -1, tID);
-    }
-
-    public Query(int tID) {
-        this(-1, "", Command.FORCE_ROLLBACK, -1, tID);
+    public Query(String line, Command command, int tID) {
+        this(line, command, -1, tID);
     }
 
     public void execute() {
@@ -53,14 +47,10 @@ public class Query {
     }
 
     public void writeLog(String msg) {
-        if (command != Command.FORCE_ROLLBACK) {
-            System.out.println("Line " + lineNumber + ": " + line + " ==> " + msg);
-        } else {
-            System.out.println(msg);
-        }
+        System.out.println(line + " ==> " + msg);
     }
 
     public void writeInputLog() {
-        System.out.println("\nINPUT: " + "Line " + lineNumber + ": " + line + "\n");
+        System.out.println("\nINPUT: " + line);
     }
 }

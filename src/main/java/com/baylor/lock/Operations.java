@@ -169,7 +169,7 @@ public class Operations {
         visited = new HashMap<>();
         if (hasCycle(tID)) {
             System.out.println("Deadlock detected, rolling back transaction " + tID);
-            Operations.rollback(new Query(tID));
+            Operations.rollback(new Query("ForceRollback " + tID, Query.Command.FORCE_ROLLBACK, tID));
         }
     }
 
@@ -191,10 +191,9 @@ public class Operations {
     }
 
     public static void runWaitingQueries(int tID) {
-        System.out.println("Executing blocked and pending queries for transaction " + tID);
-
         // unblock the transaction first
         transactions.put(tID, TransactionStatus.ACTIVE);
+        System.out.println("Transaction " + tID + " has been unblocked");
 
         for (int i = 0; i < queries.length; i++) {
             if (queries[i].tID == tID && (queries[i].status == Query.Status.BLOCKED || queries[i].status == Query.Status.PENDING)) {
