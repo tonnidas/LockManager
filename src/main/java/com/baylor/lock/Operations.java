@@ -84,6 +84,15 @@ public class Operations {
             return;
         }
 
+        // redo all WRITE history that were DONE
+        for (int i = 0; i < queries.length; i++) {
+            if (queries[i].tID == query.tID && queries[i].command == Query.Command.WRITE && queries[i].status == Query.Status.DONE) {
+                int newValue = Storage.writeDataCommitted(queries[i].dID);
+                queries[i].status = Query.Status.COMMITTED;
+                queries[i].writeLog("committed, new value: " + newValue);
+            }
+        }
+
         releaseTransaction(query.tID);
 
         transactions.put(query.tID, TransactionStatus.COMMIT);
@@ -102,7 +111,6 @@ public class Operations {
         // undo all WRITE history in reverse order that were DONE
         for (int i = queries.length - 1; i >= 0; i--) {
             if (queries[i].tID == query.tID && queries[i].command == Query.Command.WRITE && queries[i].status == Query.Status.DONE) {
-
                 int newValue = Storage.writeData(queries[i].dID);
                 queries[i].status = Query.Status.ROLLBACK;
                 queries[i].writeLog("rolled back, new value: " + newValue);

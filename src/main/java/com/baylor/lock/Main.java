@@ -18,7 +18,8 @@ public class Main {
         initLockTable();
         executeQueries();
 
-        System.out.println("\nFinal data value: " + Storage.data);
+        System.out.println("\nFinal results:");
+        Storage.printDataBits();
         printLockTable();
         printTransactions();
     }
@@ -45,8 +46,7 @@ public class Main {
 
             // first line of the input is the initial value
             if (lineNumber == 1) {
-                Storage.data = Integer.parseInt(line);
-                System.out.println("Data initialized to " + Storage.getDataBits());
+                Storage.initData(Integer.parseInt(line));
                 continue;
             }
 

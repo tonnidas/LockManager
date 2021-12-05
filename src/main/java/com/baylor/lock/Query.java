@@ -6,7 +6,7 @@ public class Query {
     }
 
     public enum Status {
-        NEW, PENDING, BLOCKED, DONE, ROLLBACK, SKIPPED
+        NEW, PENDING, BLOCKED, DONE, COMMITTED, ROLLBACK, SKIPPED
     }
 
     String line;

@@ -6,6 +6,7 @@ import java.util.Set;
 
 public class Storage {
     public static int data;
+    public static int dataCommitted;
 
     public static Lock[] lockTable = new Lock[32];
     public static Map<Integer, TransactionStatus> transactions = new HashMap<>();
@@ -15,6 +16,13 @@ public class Storage {
 
     public enum TransactionStatus {
         ACTIVE, BLOCK, COMMIT, ROLLBACK, NONE
+    }
+
+    public static void initData(int value) {
+        Storage.data = value;
+        Storage.dataCommitted = value;
+        System.out.println("Data initialized");
+        Storage.printDataBits();
     }
 
     // returns value of k-th bit
@@ -28,8 +36,22 @@ public class Storage {
         return readData(k);
     }
 
-    public static String getDataBits() {
-        String binaryString = Integer.toBinaryString(data);
-        return String.format("%32s", binaryString).replace(' ', '0');
+    // returns value of k-th bit
+    public static int readDataCommitted(int k) {
+        return (dataCommitted >> k) & 1;
+    }
+
+    // flips the k-th bit and returns thr new value
+    public static int writeDataCommitted(int k) {
+        dataCommitted = dataCommitted ^ (1 << k);
+        return readData(k);
+    }
+
+    public static void printDataBits() {
+        String binaryString = String.format("%32s", Integer.toBinaryString(data)).replace(' ', '0');
+        System.out.println("Dirty data: " + binaryString + " Int value: " + data);
+
+        binaryString = String.format("%32s", Integer.toBinaryString(dataCommitted)).replace(' ', '0');
+        System.out.println("Committed data: " + binaryString + " Int value: " + dataCommitted);
     }
 }
