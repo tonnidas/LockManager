@@ -47,7 +47,7 @@ public class Main {
 
             // first line of the input is the initial value
             if (lineNumber == 1) {
-                Storage.initData(Integer.parseInt(line));
+                Storage.initData(Long.parseLong(line));
                 continue;
             }
 

@@ -3,8 +3,8 @@ package com.baylor.lock;
 import java.util.*;
 
 public class Storage {
-    public static int data;
-    public static int dataCommitted;
+    private static long data;
+    private static long dataCommitted;
 
     public static Lock[] lockTable = new Lock[32];
     public static Map<Integer, TransactionStatus> transactions = new HashMap<>();
@@ -16,41 +16,32 @@ public class Storage {
         ACTIVE, BLOCKED, COMMITTED, ROLLBACK, NONE
     }
 
-    public static void initData(int value) {
+    public static void initData(long value) {
         Storage.data = value;
         Storage.dataCommitted = value;
-        System.out.println("Data initialized");
-        Storage.printDataBits();
+        System.out.println("Initial data: " + binaryString(data));
     }
 
     // returns value of k-th bit
     public static int readData(int k) {
-        return (data >> k) & 1;
+        return (int) ((data >> k) & 1);
     }
 
     // flips the k-th bit and returns thr new value
     public static int writeData(int k) {
-        data = data ^ (1 << k);
+        data = data ^ (1L << k);
         return readData(k);
     }
 
     // returns value of k-th bit
     public static int readDataCommitted(int k) {
-        return (dataCommitted >> k) & 1;
+        return (int) ((dataCommitted >> k) & 1);
     }
 
     // flips the k-th bit and returns thr new value
     public static int writeDataCommitted(int k) {
-        dataCommitted = dataCommitted ^ (1 << k);
+        dataCommitted = dataCommitted ^ (1L << k);
         return readDataCommitted(k);
-    }
-
-    public static void printDataBits() {
-        String binaryString = String.format("%32s", Integer.toBinaryString(data)).replace(' ', '0');
-        System.out.println("Dirty data: " + binaryString + " Int value: " + data);
-
-        binaryString = String.format("%32s", Integer.toBinaryString(dataCommitted)).replace(' ', '0');
-        System.out.println("Committed data: " + binaryString + " Int value: " + dataCommitted);
     }
 
     public static void initLockTable() {
@@ -59,30 +50,43 @@ public class Storage {
         }
     }
 
+    public static String binaryString(long value) {
+        return String.format("%32s", Long.toBinaryString(value)).replace(' ', '0') + ", Int value: " + value;
+    }
+
+    public static void printDataBits() {
+        System.out.println("Dirty data: " + binaryString(data));
+        System.out.println("Committed data: " + binaryString(dataCommitted));
+    }
+
     public static void printLockTable() {
-        System.out.println("\nLock Table:");
+        System.out.println("\nLock Table: (Mode: R = Read/Shared, W = Write/Exclusive) (Skipped Empty)");
 
         for (int i = 0; i < 32; i++) {
             Lock lock = Storage.lockTable[i];
 
+            if (lock.lockHolds.isEmpty() && lock.waitingLocks.isEmpty()) {
+                continue;
+            }
+
             List<String> holds = new ArrayList<>();
             for (int t : lock.lockHolds) {
-                String mode = lock.lockStatus == Lock.LockStatus.READ ? "Shared" : "Exclusive";
-                holds.add("(tID: " + t + ", mode: " + mode + ")");
+                String mode = lock.lockStatus == Lock.LockStatus.READ ? "R" : "W";
+                holds.add(t + "/" + mode);
             }
 
             List<String> waits = new ArrayList<>();
             for (Lock.LockRequest w : lock.waitingLocks) {
-                String mode = w.isRead ? "Shared" : "Exclusive";
-                waits.add("(tID: " + w.tID + ", mode: " + mode + ")");
+                String mode = w.isRead ? "R" : "W";
+                waits.add(w.tID + "/" + mode);
             }
 
-            System.out.println("DataID: " + i + " " + "HoldBy: " + holds + " Waiting: " + waits);
+            System.out.println("DataID: " + i + ", " + "HoldBy (TrID/Mode): " + holds + ", Waiting (TrID/Mode): " + waits);
         }
     }
 
     public static void printTransactions() {
-        System.out.println("\nTransactions:");
+        System.out.println("\nTransactions: (Mode: R = Read/Shared, W = Write/Exclusive)");
 
         for (int tID : Storage.transactions.keySet()) {
             List<String> holds = new ArrayList<>();
@@ -90,27 +94,20 @@ public class Storage {
 
             for (int i = 0; i < 32; i++) {
                 if (Storage.lockTable[i].lockHolds.contains(tID)) {
-                    String mode = Storage.lockTable[i].lockStatus == Lock.LockStatus.READ ? "Shared" : "Exclusive";
-                    holds.add("(DataID: " + i + ", mode: " + mode + ")");
+                    String mode = Storage.lockTable[i].lockStatus == Lock.LockStatus.READ ? "R" : "W";
+                    holds.add(i + "/" + mode);
                 } else {
                     for (Lock.LockRequest w : Storage.lockTable[i].waitingLocks) {
                         if (w.tID == tID) {
-                            String mode = w.isRead ? "Shared" : "Exclusive";
-                            waits.add("(DataID: " + i + ", mode: " + mode + ")");
+                            String mode = w.isRead ? "R" : "W";
+                            waits.add(i + "/" + mode);
                         }
                     }
                 }
             }
 
-            System.out.println("tID: " + tID + " " + "Status: " + Storage.transactions.get(tID) + " Holds: " + holds + " Waiting: " + waits);
-        }
-    }
-
-    public static void printDepGraph() {
-        System.out.println("\nDependency Graph:");
-
-        for (int tID : Storage.depGraph.keySet()) {
-            System.out.println(tID + ": " + Storage.depGraph.get(tID));
+            System.out.println("TrID: " + tID + ", Status: " + Storage.transactions.get(tID) + ", Holding (DataID/Mode): " + holds
+                    + ", Waiting (DataID/Mode): " + waits + ", Dependencies (TrID): " + depGraph.getOrDefault(tID, new HashSet<>()));
         }
     }
 }
