@@ -2,12 +2,15 @@ package com.baylor.lock;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class Storage {
     public static int data;
 
     public static Lock[] lockTable = new Lock[32];
     public static Map<Integer, TransactionStatus> transactions = new HashMap<>();
+    public static Map<Integer, Set<Integer>> depGraph = new HashMap<>();
+    public static Map<Integer, Integer> visited; // 0 = not-visited, 1 = on-stack, 2 = done
     public static Query[] queries;
 
     public enum TransactionStatus {

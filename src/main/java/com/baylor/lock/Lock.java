@@ -35,13 +35,21 @@ public class Lock {
     }
 
     public boolean requestReadLock(int tID) {
-        if (lockStatus == LockStatus.NONE || lockStatus == LockStatus.READ) {
-            // granted, no lock or read lock
+        if (lockStatus == LockStatus.NONE) {
+            // granted, no lock
             grantLock(tID, LockStatus.READ);
             return true;
-        } else if (lockHolds.contains(tID)) {
+        } else if (lockStatus == LockStatus.READ && lockHolds.contains(tID)) {
+            // granted, read lock was hold by the same transaction
+            grantLock(tID, LockStatus.READ);
+            return true;
+        } else if (lockStatus == LockStatus.READ && waitingLocks.isEmpty()) {
+            // only read lock and there is no waiting locks, second check is done to avoid starvation
+            grantLock(tID, LockStatus.READ);
+            return true;
+        } else if (lockStatus == LockStatus.WRITE && lockHolds.contains(tID)) {
             // granted, write lock was hold by the same transaction
-            // lockStatus should remain WRITE
+            // lockStatus should remain WRITE is holding lock was write
             grantLock(tID, LockStatus.WRITE);
             return true;
         } else { // waiting
@@ -56,7 +64,7 @@ public class Lock {
             grantLock(tID, LockStatus.WRITE);
             return true;
         } else if (lockStatus == LockStatus.READ && lockHolds.size() == 1 && lockHolds.contains(tID)) {
-            // granted, read lock was hold by the same transaction, upgrade lock
+            // granted, read lock was hold by the same transaction and there is only one lockHolds, upgrade lock
             grantLock(tID, LockStatus.WRITE);
             return true;
         } else if (lockStatus == LockStatus.WRITE && lockHolds.contains(tID)) {
@@ -84,23 +92,21 @@ public class Lock {
         }
     }
 
-    // if there is existing waiting WRITE lock for the same tID, do nothing
-    // if there is existing waiting READ lock for the same tID, do nothing if current request is READ, else make it WRITE
     public void addWaiting(int tID, boolean isRead) {
-        int i = 0;
+        // skip if there is compatible waiting request for the same tID
+        // dependency = lock holds + waiting locks, except both current operation and waiting operation is read
+        Set<Integer> waitsFor = new HashSet<>(lockHolds);
         for (LockRequest w : waitingLocks) {
-            if (w.tID == tID) {
-                if (w.isRead && !isRead) {
-                    w.isRead = false;
-                    waitingLocks.set(i, w);
-                }
-                return;
+            if (w.tID == tID && (w.isRead == isRead || !w.isRead)) {
+                return; // compatible lock for the same tID
             }
-            i++;
+            if (isRead && w.isRead) {
+                continue; // both read
+            }
+            waitsFor.add(w.tID);
         }
 
-        // no existing entry, add new entry
+        Operations.addDependency(tID, waitsFor);
         waitingLocks.add(new LockRequest(tID, isRead));
-        Dependency.addDependency(tID, lockHolds);
     }
 }

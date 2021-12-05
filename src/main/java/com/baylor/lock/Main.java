@@ -6,9 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
-import static com.baylor.lock.Operations.organize;
-import static com.baylor.lock.Storage.lockTable;
-
 public class Main {
     public static void main(String[] args) throws FileNotFoundException {
         if (args.length != 1) {
@@ -28,9 +25,8 @@ public class Main {
 
     public static void executeQueries() {
         for (int i = 0; i < Storage.queries.length; i++) {
-            Storage.queries[i].writeLog("-------Processing-------");
+            Storage.queries[i].writeInputLog();
             Storage.queries[i].execute();
-            organize();
         }
     }
 
@@ -101,7 +97,7 @@ public class Main {
     public static void printLockTable() {
         System.out.println("\nLock Table:");
         for (int i = 0; i < 32; i++) {
-            System.out.println("DataID: " + i + " " + printLockStatus(lockTable[i]));
+            System.out.println("DataID: " + i + " " + printLockStatus(Storage.lockTable[i]));
         }
     }
 
@@ -133,11 +129,11 @@ public class Main {
         List<String> waits = new ArrayList<>();
 
         for (int i = 0; i < 32; i++) {
-            if (lockTable[i].lockHolds.contains(tID)) {
-                String mode = lockTable[i].lockStatus == Lock.LockStatus.READ ? "Shared" : "Exclusive";
+            if (Storage.lockTable[i].lockHolds.contains(tID)) {
+                String mode = Storage.lockTable[i].lockStatus == Lock.LockStatus.READ ? "Shared" : "Exclusive";
                 holds.add("(DataID: " + i + ", mode: " + mode + ")");
             } else {
-                for (Lock.LockRequest w : lockTable[i].waitingLocks) {
+                for (Lock.LockRequest w : Storage.lockTable[i].waitingLocks) {
                     if (w.tID == tID) {
                         String mode = w.isRead ? "Shared" : "Exclusive";
                         waits.add("(DataID: " + i + ", mode: " + mode + ")");
@@ -147,5 +143,13 @@ public class Main {
         }
 
         return "Status: " + Storage.transactions.get(tID) + " Holds: " + holds + " Waiting: " + waits;
+    }
+
+    public static void printDepGraph() {
+        System.out.println("Dependency Graph:");
+
+        for (int tID : Storage.depGraph.keySet()) {
+            System.out.println(tID + ": " + Storage.depGraph.get(tID));
+        }
     }
 }

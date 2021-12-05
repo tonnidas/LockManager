@@ -1,5 +1,7 @@
 package com.baylor.lock;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -52,6 +54,8 @@ public class Operations {
             transactions.put(query.tID, TransactionStatus.BLOCK);
             query.status = Query.Status.BLOCKED;
             query.writeLog("blocked");
+
+            handleDeadlock(query.tID);
         }
     }
 
@@ -70,6 +74,8 @@ public class Operations {
             transactions.put(query.tID, TransactionStatus.BLOCK);
             query.status = Query.Status.BLOCKED;
             query.writeLog("blocked");
+
+            handleDeadlock(query.tID);
         }
     }
 
@@ -83,6 +89,9 @@ public class Operations {
         transactions.put(query.tID, TransactionStatus.COMMIT);
         query.status = Query.Status.DONE;
         query.writeLog("Transaction " + query.tID + " has been committed");
+
+        // check if any blocked transaction can be executed
+        checkBlocked();
     }
 
     public static void rollback(Query query) {
@@ -105,6 +114,9 @@ public class Operations {
         transactions.put(query.tID, TransactionStatus.ROLLBACK);
         query.status = Query.Status.DONE;
         query.writeLog("Transaction " + query.tID + " has been rolled back");
+
+        // check if any blocked transaction can be executed
+        checkBlocked();
     }
 
     // release all locks and remove all dependencies
@@ -112,26 +124,68 @@ public class Operations {
         for (int i = 0; i < 32; i++) {
             lockTable[i].unlock(tID);
         }
-        Dependency.removeDependency(tID);
+        removeDependency(tID);
     }
 
-    public static void organize() {
-        // rollback until deadlock exists
-        while (true) {
-            Integer head = Dependency.isDeadlock();
-            if (head == null) {
-                break;
-            } else {
-                System.out.println("Deadlock detected, rolling back transaction " + head);
-                Operations.rollback(new Query(head));
+    public static void addDependency(int tID, Set<Integer> deps) {
+        deps.remove(tID); // don't add self dependency
+        Set<Integer> oldDeps = depGraph.getOrDefault(tID, new HashSet<>());
+        oldDeps.addAll(deps);
+        depGraph.put(tID, oldDeps);
+    }
+
+    public static void removeDependency(int tID) {
+        depGraph.remove(tID);
+
+        for (int k : depGraph.keySet()) {
+            Set<Integer> oldDeps = depGraph.getOrDefault(k, new HashSet<>());
+            oldDeps.removeAll(Collections.singleton(tID));
+            depGraph.put(k, oldDeps);
+        }
+    }
+
+    public static boolean hasCycle(int u) {
+        int status = visited.getOrDefault(u, 0);
+        if (status == 1) {
+            return true;
+        }
+        if (status == 2) {
+            return false;
+        }
+
+        visited.put(u, 1);
+
+        for (int v : depGraph.getOrDefault(u, new HashSet<>())) {
+            if (hasCycle(v)) {
+                return true;
             }
         }
 
+        visited.put(u, 2);
+        return false;
+    }
+
+    public static void handleDeadlock(int tID) {
+        visited = new HashMap<>();
+        if (hasCycle(tID)) {
+            System.out.println("Deadlock detected, rolling back transaction " + tID);
+            Operations.rollback(new Query(tID));
+        }
+    }
+
+    public static void checkBlocked() {
         // run waiting transactions that have no dependency
-        for (int tID : transactions.keySet()) {
-            Set<Integer> deps = Dependency.depGraph.getOrDefault(tID, new HashSet<>());
-            if (deps.size() == 0 && transactions.getOrDefault(tID, TransactionStatus.NONE) == TransactionStatus.BLOCK) {
-                runWaitingQueries(tID);
+        while (true) {
+            boolean found = false;
+            for (int tID : transactions.keySet()) {
+                Set<Integer> deps = depGraph.getOrDefault(tID, new HashSet<>());
+                if (deps.size() == 0 && transactions.getOrDefault(tID, TransactionStatus.NONE) == TransactionStatus.BLOCK) {
+                    found = true;
+                    runWaitingQueries(tID);
+                }
+            }
+            if (!found) {
+                break;
             }
         }
     }

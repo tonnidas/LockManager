@@ -59,4 +59,8 @@ public class Query {
             System.out.println(msg);
         }
     }
+
+    public void writeInputLog() {
+        System.out.println("\nINPUT: " + "Line " + lineNumber + ": " + line + "\n");
+    }
 }
