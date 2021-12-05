@@ -26,12 +26,12 @@ public class Operations {
             query.status = Query.Status.SKIPPED;
             query.writeLog("Transaction " + query.tID + " has not started");
             return false;
-        } else if (status == TransactionStatus.COMMIT || status == TransactionStatus.ROLLBACK) {
+        } else if (status == TransactionStatus.COMMITTED || status == TransactionStatus.ROLLBACK) {
             query.status = Query.Status.SKIPPED;
             query.writeLog("Transaction " + query.tID + " has already committed or rolled back");
             return false;
-        } else if (status == TransactionStatus.BLOCK && query.command != Query.Command.ROLLBACK && query.command != Query.Command.FORCE_ROLLBACK) {
-            query.status = Query.Status.PENDING;
+        } else if (status == TransactionStatus.BLOCKED && query.command != Query.Command.ROLLBACK && query.command != Query.Command.FORCE_ROLLBACK) {
+            query.status = Query.Status.BLOCKED;
             query.writeLog("Transaction " + query.tID + " is blocked, query added to pending list");
             return false;
         }
@@ -51,7 +51,7 @@ public class Operations {
             query.status = Query.Status.DONE;
             query.writeLog("granted, value: " + value);
         } else {
-            transactions.put(query.tID, TransactionStatus.BLOCK);
+            transactions.put(query.tID, TransactionStatus.BLOCKED);
             query.status = Query.Status.BLOCKED;
             query.writeLog("blocked");
 
@@ -71,7 +71,7 @@ public class Operations {
             query.status = Query.Status.DONE;
             query.writeLog("granted, new value: " + newValue);
         } else {
-            transactions.put(query.tID, TransactionStatus.BLOCK);
+            transactions.put(query.tID, TransactionStatus.BLOCKED);
             query.status = Query.Status.BLOCKED;
             query.writeLog("blocked");
 
@@ -95,7 +95,7 @@ public class Operations {
 
         releaseTransaction(query.tID);
 
-        transactions.put(query.tID, TransactionStatus.COMMIT);
+        transactions.put(query.tID, TransactionStatus.COMMITTED);
         query.status = Query.Status.DONE;
         query.writeLog("Transaction " + query.tID + " has been committed");
 
@@ -187,7 +187,7 @@ public class Operations {
             boolean found = false;
             for (int tID : transactions.keySet()) {
                 Set<Integer> deps = depGraph.getOrDefault(tID, new HashSet<>());
-                if (deps.size() == 0 && transactions.getOrDefault(tID, TransactionStatus.NONE) == TransactionStatus.BLOCK) {
+                if (deps.size() == 0 && transactions.getOrDefault(tID, TransactionStatus.NONE) == TransactionStatus.BLOCKED) {
                     found = true;
                     runWaitingQueries(tID);
                 }
@@ -204,7 +204,7 @@ public class Operations {
         System.out.println("Transaction " + tID + " has been unblocked");
 
         for (int i = 0; i < queries.length; i++) {
-            if (queries[i].tID == tID && (queries[i].status == Query.Status.BLOCKED || queries[i].status == Query.Status.PENDING)) {
+            if (queries[i].tID == tID && queries[i].status == Query.Status.BLOCKED) {
 
                 queries[i].execute();
 

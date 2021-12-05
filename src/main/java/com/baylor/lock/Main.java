@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
+
 public class Main {
     public static void main(String[] args) throws FileNotFoundException {
         if (args.length != 1) {
@@ -15,13 +16,13 @@ public class Main {
 
         parseQueries(args[0]);
 
-        initLockTable();
+        Storage.initLockTable();
         executeQueries();
 
         System.out.println("\nFinal results:");
         Storage.printDataBits();
-        printLockTable();
-        printTransactions();
+        Storage.printLockTable();
+        Storage.printTransactions();
     }
 
     public static void executeQueries() {
@@ -86,66 +87,5 @@ public class Main {
 
         // store to global queries array
         Storage.queries = queryList.toArray(new Query[0]);
-    }
-
-    public static void initLockTable() {
-        for (int i = 0; i < 32; i++) {
-            Storage.lockTable[i] = new Lock();
-        }
-    }
-
-    public static void printLockTable() {
-        System.out.println("\nLock Table:");
-
-        for (int i = 0; i < 32; i++) {
-            Lock lock = Storage.lockTable[i];
-
-            List<String> holds = new ArrayList<>();
-            for (int t : lock.lockHolds) {
-                String mode = lock.lockStatus == Lock.LockStatus.READ ? "Shared" : "Exclusive";
-                holds.add("(tID: " + t + ", mode: " + mode + ")");
-            }
-
-            List<String> waits = new ArrayList<>();
-            for (Lock.LockRequest w : lock.waitingLocks) {
-                String mode = w.isRead ? "Shared" : "Exclusive";
-                waits.add("(tID: " + w.tID + ", mode: " + mode + ")");
-            }
-
-            System.out.println("DataID: " + i + " " + "HoldBy: " + holds + " Waiting: " + waits);
-        }
-    }
-
-    public static void printTransactions() {
-        System.out.println("\nTransactions:");
-
-        for (int tID : Storage.transactions.keySet()) {
-            List<String> holds = new ArrayList<>();
-            List<String> waits = new ArrayList<>();
-
-            for (int i = 0; i < 32; i++) {
-                if (Storage.lockTable[i].lockHolds.contains(tID)) {
-                    String mode = Storage.lockTable[i].lockStatus == Lock.LockStatus.READ ? "Shared" : "Exclusive";
-                    holds.add("(DataID: " + i + ", mode: " + mode + ")");
-                } else {
-                    for (Lock.LockRequest w : Storage.lockTable[i].waitingLocks) {
-                        if (w.tID == tID) {
-                            String mode = w.isRead ? "Shared" : "Exclusive";
-                            waits.add("(DataID: " + i + ", mode: " + mode + ")");
-                        }
-                    }
-                }
-            }
-
-            System.out.println("tID: " + tID + " " + "Status: " + Storage.transactions.get(tID) + " Holds: " + holds + " Waiting: " + waits);
-        }
-    }
-
-    public static void printDepGraph() {
-        System.out.println("\nDependency Graph:");
-
-        for (int tID : Storage.depGraph.keySet()) {
-            System.out.println(tID + ": " + Storage.depGraph.get(tID));
-        }
     }
 }
